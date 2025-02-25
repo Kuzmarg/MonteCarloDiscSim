@@ -1,0 +1,8 @@
+wireframe off
+spacefill 130
+set specular on
+boundbox on
+color boundbox black
+background white
+rotate y 30
+RasMolrotate x 10
