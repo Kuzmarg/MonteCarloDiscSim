@@ -5,14 +5,19 @@
 int main(int argc, char* argv[]) {
     srand(time(NULL));
 
-    ParticleType pt = SQUARE;
+    if (argc != 7) {
+        printf("Usage: %s <particle_type> <particle_size> <N> <Lx> <Ly> <output_file>\n", argv[0]);
+        return 1;
+    }
+
+    ParticleType pt = atoi(argv[1]);
     Particle *p = NULL;
-    double size = 1;
-    unsigned int N = 20000;
-    unsigned int Lx = 200;
-    unsigned int Ly = 200;
+    double size = atof(argv[2]);
+    long N = atol(argv[3]);
+    double Lx = atof(argv[4]);
+    double Ly = atof(argv[5]);
     Grid grid = {pt, p, size, N, Lx, Ly};
 
-    random_gen("data/test.xyz", &grid);
+    random_gen(argv[6], &grid);
     return 0;
 }
