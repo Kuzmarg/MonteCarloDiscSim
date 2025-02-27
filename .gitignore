@@ -1,3 +1,17 @@
+# IDE files
 .vscode
+
+# Visualization tool
+ovito
+
+# Compiled files
 build
+
+# Generated files
+data
 *.pdb
+*.xyz
+
+# visualization data
+viz
+*.png

@@ -1,16 +1,18 @@
-#include "cell.h"
 #include <time.h>
 #include <stdlib.h>
+#include "cell.h"
 
 int main(int argc, char* argv[]) {
-    const unsigned int N = 380;
-    const double Lx = 24.0, Ly = 24.0;
-    const double sigma = 1.0;
-    const GenParams params = {N, Lx, Ly, sigma};
-    
     srand(time(NULL));
-    random_gen("random_gen.pdb", &params, true);
-    square_gen("square_gen.pdb", &params, true);
-    hexagonal_gen("hexagonal_gen.pdb", &params, true);
+
+    ParticleType pt = SQUARE;
+    Particle *p = NULL;
+    double size = 1;
+    unsigned int N = 20000;
+    unsigned int Lx = 200;
+    unsigned int Ly = 200;
+    Grid grid = {pt, p, size, N, Lx, Ly};
+
+    random_gen("data/test.xyz", &grid);
     return 0;
 }

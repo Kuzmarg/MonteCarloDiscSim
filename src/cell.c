@@ -1,100 +1,128 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
-#include <time.h>
 #include "cell.h"
 
-#define MAX_ITERATIONS 10000
-
-// ----------------- UTILS -----------------
-
-double rand_double(double high) {
-    return ((double)rand() * high) / (double)RAND_MAX;
+void set_random_particle(Particle *p, const Grid *grid) {
+    p->x = rand_double(grid->Lx);
+    p->y = rand_double(grid->Ly);
+    if (grid->type == CIRCLE) { p->qw = 1; return; }
+    double angle = rand_double(M_PI / 2);
+    p->qw = cos(angle/2);
+    p->qz = sin(angle/2);
 }
 
-double distance(const Point* p1, const Point* p2) {
-    return sqrt(pow(p1->x - p2->x, 2) + pow(p1->y - p2->y, 2));
+int grid_allocate(Grid *grid) {
+    grid->points = (Particle*)calloc(grid->N, sizeof(Particle));
+    return grid->points == NULL;
 }
 
-double distance_pbc(const Point* p1, const Point* p2, const GenParams *params) {
-    double dx = fabs(p1->x - p2->x);
-    double dy = fabs(p1->y - p2->y);
-    double dist_x = fmin(dx, params->Lx - dx);
-    double dist_y = fmin(dy, params->Ly - dy);
-    return sqrt(pow(dist_x, 2) + pow(dist_y, 2));
-}
-
-int random_gen_point(const GenParams * params, Point* points, size_t t_idx, bool pbc) {
-    for (size_t iter_idx = 0; iter_idx < MAX_ITERATIONS; iter_idx++) {
-        points[t_idx].x = rand_double(params->Lx);
-        points[t_idx].y = rand_double(params->Ly);
-        size_t p_idx;
-        for (p_idx = 0; p_idx < t_idx; p_idx++) {
-            double dist = pbc ? distance_pbc(points + p_idx, points + t_idx, params) : distance(points + p_idx, points + t_idx);
-            if (dist < params->sigma) break;
-        }
-        if (p_idx == t_idx) return 0;
-    }
-    return 1;
-}
-
-// ----------------- MAIN FUNCTIONS -----------------
-
-int write_pdb(const char* filename, const Point* points, size_t N) {
-    FILE *file = fopen(filename, "w");
-    if (file == NULL) return 1;
-    for (size_t idx = 0; idx < N; idx++)
-        fprintf(file, "ATOM  %5ld  N   NONE    1    %8.3f%8.3f%8.3f  1.00  0.00\n", idx + 1, points[idx].x, points[idx].y, 0.0);
-    fclose(file);
+int grid_free(Grid *grid) {
+    free(grid->points);
     return 0;
 }
 
-int random_gen(const char* filename, const GenParams *params, bool pbc) {
-    Point *points = (Point*)malloc(params->N * sizeof(Point));
-    size_t num_generated = params->N;
-    for (size_t idx = 0; idx < params->N; idx++) {
-        if(random_gen_point(params, points, idx, pbc)) {
-            num_generated = idx;
+int cll_allocate(CellLinkedGrid *cll, const Grid *grid) {
+    switch (grid->type)
+    {
+        case CIRCLE:
+            cll-> s_x = grid->size;
+            cll->max_particles = 4;
+            cll->check_overlap = circle_overlap;
+            break;
+        case SQUARE:
+            cll->s_x = grid->size * sqrt(2);
+            cll->max_particles = 5;
+            cll->check_overlap = square_overlap;
+            break;
+    }
+    cll->n_x = ceil(grid->Lx / cll->s_x);
+    cll->n_y = ceil(grid->Ly / cll->s_x);
+    cll->cells = (Particle*)calloc(cll->n_x * cll->n_y * cll->max_particles, sizeof(Particle));
+    return cll->cells == NULL;
+}
+
+int cll_check_overlap(const Particle *p1, CellLinkedGrid *cll, const Grid* grid) {
+    unsigned int x_idx = (unsigned int) (p1->x / cll->s_x);
+    unsigned int y_idx = (unsigned int) (p1->y / cll->s_x);
+    for (int i = -1; i < 2; i++) {
+        for (int j = -1; j < 2; j++) {
+            size_t idx = (x_idx + i + cll->n_x) % cll->n_x;
+            size_t idy = (y_idx + j + cll->n_y) % cll->n_y;
+            size_t cell_idx = idx * cll->n_y + idy;
+            for (int k = 0; k < cll->max_particles && cll->cells[cell_idx * cll->max_particles + k].qw; k++) {
+                if (cll->check_overlap(p1, &cll->cells[cell_idx * cll->max_particles + k], grid)) return 1;
+            }
+        }
+    }
+    
+    for (int i = 0; i < cll->max_particles; i++) {
+        if (!cll->cells[(x_idx * cll->n_y + y_idx) * cll->max_particles + i].qw) {
+            cll->cells[(x_idx * cll->n_y + y_idx) * cll->max_particles + i] = *p1;
             break;
         }
     }
-    if (num_generated != params->N) {
-        printf("Could not generate %d points\n", params->N);
+    return 0;
+}
+
+int cll_free(CellLinkedGrid *cll) {
+    free(cll->cells);
+    return 0;
+}
+
+int random_gen(const char* filename, Grid *grid) {
+    CellLinkedGrid cll;
+    cll_allocate(&cll, grid);
+    grid_allocate(grid);
+    if (!grid->points && cll.cells) { cll_free(&cll); return 1; }
+    if (!cll.cells && grid->points) { grid_free(grid); return 1; }
+
+    size_t num_generated = grid->N;
+    for (size_t idx = 0; idx < grid->N; idx++) {
+        for (size_t i = 0; i < MAX_GEN_ITERATIONS; i++) {
+            set_random_particle(&grid->points[idx], grid);
+            if (!cll_check_overlap(&grid->points[idx], &cll, grid)) break;
+            if (i == MAX_GEN_ITERATIONS - 1) num_generated = idx;
+        }
+        if (num_generated < grid->N) break;
     }
-    int write_code = write_pdb(filename, points, num_generated);
-    free(points);
+    printf("Generated %lu particles\n", num_generated);
+    grid->N = num_generated;
+    int write_code = write_xyz(filename, grid);
+    grid_free(grid);
+    cll_free(&cll);
     return write_code;
 }
 
-int square_gen(const char* filename, const GenParams *params, bool pbc) {
-    unsigned int N_x = (unsigned int) (params->Lx / params->sigma) + 1;
-    unsigned int N_y = (unsigned int) (params->Ly / params->sigma) + 1;
-    unsigned int N = N_x * N_y;
-    Point *points = (Point*)malloc(N * sizeof(Point));
+int square_gen(const char* filename, Grid *grid) {
+    grid_allocate(grid);
+    unsigned int N_x = (unsigned int) (grid->Lx / grid->size) + 1;
+    unsigned int N_y = (unsigned int) (grid->Ly / grid->size) + 1;
+    grid->N = N_x * N_y;
     for (unsigned int x_idx = 0; x_idx < N_x; x_idx++) {
         for (unsigned int y_idx = 0; y_idx < N_y; y_idx++) {
-            points[x_idx * N_y + y_idx].x = x_idx * params->sigma;
-            points[x_idx * N_y + y_idx].y = y_idx * params->sigma;
+            grid->points[x_idx * N_y + y_idx].x = x_idx * grid->size;
+            grid->points[x_idx * N_y + y_idx].y = y_idx * grid->size;
+            grid->points[x_idx * N_y + y_idx].qw = 1;
         }
     }
-    int write_code = write_pdb(filename, points, N);
-    free(points);
+    int write_code = write_xyz(filename, grid);
+    grid_free(grid);
     return write_code;
 }
 
-int hexagonal_gen(const char* filename, const GenParams *params, bool pbc) {
-    unsigned int N_x = (unsigned int) (params->Lx / params->sigma / (sqrt(3)/2));
-    unsigned int N_y = (unsigned int) (params->Ly / params->sigma);
-    unsigned int N = N_x * N_y;
-    Point *points = (Point*)malloc(N * sizeof(Point));
+// TODO: fix slight boundary overstep
+int hexagonal_gen(const char* filename, Grid *grid) {
+    unsigned int N_x = (unsigned int) ceil(grid->Lx / grid->size / (sqrt(3)/2));
+    unsigned int N_y = (unsigned int) (grid->Ly / grid->size) + 1;
+    grid-> N = N_x * N_y;
+    grid_allocate(grid);
     for (unsigned int x_idx = 0; x_idx < N_x; x_idx++) {
         for (unsigned int y_idx = 0; y_idx < N_y; y_idx++) {
-            points[x_idx * N_y + y_idx].x = x_idx * params->sigma * sqrt(3) / 2;
-            points[x_idx * N_y + y_idx].y = y_idx * params->sigma;
-            if (x_idx % 2 == 1) points[x_idx * N_y + y_idx].y += params->sigma / 2;
+            grid->points[x_idx * N_y + y_idx].x = x_idx * grid->size * sqrt(3)/2;
+            grid->points[x_idx * N_y + y_idx].y = y_idx * grid->size;
+            grid->points[x_idx * N_y + y_idx].qw = 1;
+            if (x_idx % 2) grid->points[x_idx * N_y + y_idx].y += grid->size / 2;
         }
     }
-    int write_code = write_pdb(filename, points, N);
-    free(points);
+    int write_code = write_xyz(filename, grid);
+    grid_free(grid);
     return write_code;
 }

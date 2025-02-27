@@ -1,25 +1,26 @@
-#ifndef CELL_GEN_HPP
-#define CELL_GEN_HPP
+#ifndef CELL_GEN_H
+#define CELL_GEN_H
 
-#include <stddef.h>
-#include <stdbool.h>
+#define MAX_GEN_ITERATIONS 10000
 
-typedef struct {
-    double x, y;
-} Point;
+#include "types.h"
+#include "particles.h"
+#include "utils.h"
 
-typedef struct {
-    unsigned int N;
-    double Lx, Ly;  
-    double sigma;
-} GenParams;
+int grid_allocate(Grid *grid);
 
-int write_pdb(const char* filename, const Point* points, size_t N);
+int grid_free(Grid *grid);
 
-int random_gen(const char* filename, const GenParams *params, bool pbc);
+int cll_allocate(CellLinkedGrid *cll, const Grid *grid);
 
-int square_gen(const char* filename, const GenParams *params, bool pbc);
+int cll_check_overlap(const Particle *p1, CellLinkedGrid *cll, const Grid* grid);
 
-int hexagonal_gen(const char* filename, const GenParams *params, bool pbc);
+int cll_free(CellLinkedGrid *cll);
 
-#endif // CELL_GEN_HPP
+int random_gen(const char* filename, Grid *grid);
+
+int square_gen(const char* filename, Grid *params);
+
+int hexagonal_gen(const char* filename, Grid *params);
+
+#endif // CELL_GEN_H
