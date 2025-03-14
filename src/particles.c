@@ -1,6 +1,8 @@
 #include "particles.h"
 
+// TODO: Fix square overlap on dynamic movement grid
 int square_overlap(const Particle *p1, const Particle *p2, const Grid *grid) {
+    if (distance(p1, p2, grid) > sqrt(2) * grid->size) return 0;
     if (distance(p1, p2, grid) < grid->size) return 1;
 
     // rotation angles from quaternions

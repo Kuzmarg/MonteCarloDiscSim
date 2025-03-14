@@ -15,6 +15,8 @@ void get_square_vertices(double x, double y, double s, double cos_t, double sin_
 
 double rand_double(double high);
 
+int rand_int(int high);
+
 double distance(const Particle* p1, const Particle* p2, const Grid* grid);
 
 int write_pdb(const char* filename, const Grid* grid);

@@ -6,10 +6,12 @@ typedef enum {
     SQUARE = 'S',
 } ParticleType;
 
-typedef struct {
+struct Particle {
     double x, y; // position
     double qz, qw; // parts of rotation quaternion
-} Particle;
+    struct Particle *cll_copy; // pointer to particle in cell linked list
+};
+typedef struct Particle Particle;
 
 typedef struct {
     ParticleType type; // type of particle

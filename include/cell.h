@@ -15,12 +15,14 @@ int cll_allocate(CellLinkedGrid *cll, const Grid *grid);
 
 int cll_check_overlap(const Particle *p1, CellLinkedGrid *cll, const Grid* grid);
 
+int cll_add_point(Particle *p, CellLinkedGrid *cll);
+
 int cll_free(CellLinkedGrid *cll);
 
-int random_gen(const char* filename, Grid *grid);
+int random_gen(Grid *grid, CellLinkedGrid *cll);
 
-int square_gen(const char* filename, Grid *params);
+int square_gen(Grid *grid, CellLinkedGrid *cll);
 
-int hexagonal_gen(const char* filename, Grid *params);
+int hexagonal_gen(Grid *grid, CellLinkedGrid *cll);
 
 #endif // CELL_GEN_H

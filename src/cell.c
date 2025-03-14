@@ -52,14 +52,21 @@ int cll_check_overlap(const Particle *p1, CellLinkedGrid *cll, const Grid* grid)
             }
         }
     }
-    
+    return 0;
+}
+
+int cll_add_point(Particle *p, CellLinkedGrid *cll) {
+    long x_idx = (long) (p->x / cll->s_x);
+    long y_idx = (long) (p->y / cll->s_x);
+    size_t cell_idx = x_idx * cll->n_y + y_idx;
     for (int i = 0; i < cll->max_particles; i++) {
-        if (!cll->cells[(x_idx * cll->n_y + y_idx) * cll->max_particles + i].qw) {
-            cll->cells[(x_idx * cll->n_y + y_idx) * cll->max_particles + i] = *p1;
-            break;
+        if (!cll->cells[cell_idx * cll->max_particles + i].qw) {
+            cll->cells[cell_idx * cll->max_particles + i] = *p;
+            p->cll_copy = &cll->cells[cell_idx * cll->max_particles + i];
+            return 0;
         }
     }
-    return 0;
+    return 1;
 }
 
 int cll_free(CellLinkedGrid *cll) {
@@ -67,31 +74,30 @@ int cll_free(CellLinkedGrid *cll) {
     return 0;
 }
 
-int random_gen(const char* filename, Grid *grid) {
-    CellLinkedGrid cll;
-    cll_allocate(&cll, grid);
+int random_gen(Grid *grid, CellLinkedGrid *cll) {
+    cll_allocate(cll, grid);
+    if (!cll->cells) return 1;
     grid_allocate(grid);
-    if (!grid->points && cll.cells) { cll_free(&cll); return 1; }
-    if (!cll.cells && grid->points) { grid_free(grid); return 1; }
+    if (!grid->points) { cll_free(cll); return 1; }
 
     size_t num_generated = grid->N;
     for (size_t idx = 0; idx < grid->N; idx++) {
         for (size_t i = 0; i < MAX_GEN_ITERATIONS; i++) {
             set_random_particle(&grid->points[idx], grid);
-            if (!cll_check_overlap(&grid->points[idx], &cll, grid)) break;
+            if (!cll_check_overlap(&grid->points[idx], cll, grid)) {
+                cll_add_point(&grid->points[idx], cll);
+                break;
+            }
             if (i == MAX_GEN_ITERATIONS - 1) num_generated = idx;
         }
         if (num_generated < grid->N) break;
     }
     printf("Generated %lu particles\n", num_generated);
     grid->N = num_generated;
-    int write_code = write_xyz(filename, grid);
-    grid_free(grid);
-    cll_free(&cll);
-    return write_code;
+    return 0;
 }
 
-int square_gen(const char* filename, Grid *grid) {
+int square_gen(Grid *grid, CellLinkedGrid *cll) {
     grid_allocate(grid);
     long N_x = (long) (grid->Lx / grid->size) + 1;
     long N_y = (long) (grid->Ly / grid->size) + 1;
@@ -103,13 +109,11 @@ int square_gen(const char* filename, Grid *grid) {
             grid->points[x_idx * N_y + y_idx].qw = 1;
         }
     }
-    int write_code = write_xyz(filename, grid);
-    grid_free(grid);
-    return write_code;
+    return 0;
 }
 
 // TODO: fix slight boundary overstep
-int hexagonal_gen(const char* filename, Grid *grid) {
+int hexagonal_gen(Grid *grid, CellLinkedGrid *cll) {
     long N_x = (long) ceil(grid->Lx / grid->size / (sqrt(3)/2));
     long N_y = (long) (grid->Ly / grid->size) + 1;
     grid-> N = N_x * N_y;
@@ -122,7 +126,5 @@ int hexagonal_gen(const char* filename, Grid *grid) {
             if (x_idx % 2) grid->points[x_idx * N_y + y_idx].y += grid->size / 2;
         }
     }
-    int write_code = write_xyz(filename, grid);
-    grid_free(grid);
-    return write_code;
+    return 0;
 }

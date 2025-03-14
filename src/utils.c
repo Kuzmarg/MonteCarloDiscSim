@@ -23,6 +23,10 @@ double rand_double(double high) {
     return ((double)rand() * high) / (double)RAND_MAX;
 }
 
+int rand_int(int high) {
+    return rand() % high;
+}
+
 double distance(const Particle* p1, const Particle* p2, const Grid* grid) {
     double dx = fmin(fabs(p1->x - p2->x), fabs(grid->Lx - fabs(p1->x - p2->x)));
     double dy = fmin(fabs(p1->y - p2->y), fabs(grid->Ly - fabs(p1->y - p2->y)));
@@ -46,7 +50,7 @@ int write_pdb(const char* filename, const Grid* grid) {
 int write_xyz(const char* filename, const Grid* grid) {
     FILE *file = fopen(filename, "w");
     if (file == NULL) return 1;
-    fprintf(file, "%d\n", grid->N);
+    fprintf(file, "%ld\n", grid->N);
     fprintf(file, "Properties=species:S:1:pos:R:3:orientation:R:4:aspherical_shape:R:3\n");
     for (size_t idx = 0; idx < grid->N; idx++)
         fprintf(file, "%c %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n",
