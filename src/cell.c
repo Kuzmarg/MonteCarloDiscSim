@@ -36,6 +36,7 @@ int cll_allocate(CellLinkedGrid *cll, const Grid *grid) {
     cll->n_x = ceil(grid->Lx / cll->s_x);
     cll->n_y = ceil(grid->Ly / cll->s_x);
     cll->cells = (Particle*)calloc(cll->n_x * cll->n_y * cll->max_particles, sizeof(Particle));
+    cll->head = (int*)calloc(cll->n_x * cll->n_y, sizeof(int));
     return cll->cells == NULL;
 }
 
@@ -47,7 +48,7 @@ int cll_check_overlap(const Particle *p1, CellLinkedGrid *cll, const Grid* grid)
             size_t idx = (x_idx + i + cll->n_x) % cll->n_x;
             size_t idy = (y_idx + j + cll->n_y) % cll->n_y;
             size_t cell_idx = idx * cll->n_y + idy;
-            for (int k = 0; k < cll->max_particles && cll->cells[cell_idx * cll->max_particles + k].qw; k++) {
+            for (int k = 0; k < cll->head[cell_idx]; k++) {
                 if (cll->check_overlap(p1, &cll->cells[cell_idx * cll->max_particles + k], grid)) return 1;
             }
         }
@@ -59,10 +60,22 @@ int cll_add_point(Particle *p, CellLinkedGrid *cll) {
     long x_idx = (long) (p->x / cll->s_x);
     long y_idx = (long) (p->y / cll->s_x);
     size_t cell_idx = x_idx * cll->n_y + y_idx;
-    for (int i = 0; i < cll->max_particles; i++) {
-        if (!cll->cells[cell_idx * cll->max_particles + i].qw) {
-            cll->cells[cell_idx * cll->max_particles + i] = *p;
-            p->cll_copy = &cll->cells[cell_idx * cll->max_particles + i];
+    int i = cll->head[cell_idx];
+    if (i >= cll->max_particles) return 1;
+    p->cll_cell_idx = cell_idx;
+    cll->cells[cell_idx * cll->max_particles + i] = *p;
+    cll->head[cell_idx] = (i + 1);
+    return 0;
+}
+
+int cll_remove_point(Particle *p, CellLinkedGrid *cll) {
+    int cell_idx = p->cll_cell_idx;
+    int cell_count = cll->head[cell_idx];
+    for (int i = 0; i < cell_count; i++) {
+        if (cll->cells[cell_idx * cll->max_particles + i].id == p->id) {
+            cll->head[cell_idx]--;
+            cll->cells[cell_idx * cll->max_particles + i] = cll->cells[cell_idx * cll->max_particles + (cell_count - 1)];
+            p->cll_cell_idx = -1;
             return 0;
         }
     }
@@ -71,6 +84,7 @@ int cll_add_point(Particle *p, CellLinkedGrid *cll) {
 
 int cll_free(CellLinkedGrid *cll) {
     free(cll->cells);
+    free(cll->head);
     return 0;
 }
 
@@ -82,6 +96,7 @@ int random_gen(Grid *grid, CellLinkedGrid *cll) {
 
     size_t num_generated = grid->N;
     for (size_t idx = 0; idx < grid->N; idx++) {
+        grid->points[idx].id = idx;
         for (size_t i = 0; i < MAX_GEN_ITERATIONS; i++) {
             set_random_particle(&grid->points[idx], grid);
             if (!cll_check_overlap(&grid->points[idx], cll, grid)) {

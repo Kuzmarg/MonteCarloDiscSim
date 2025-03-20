@@ -6,12 +6,12 @@ typedef enum {
     SQUARE = 'S',
 } ParticleType;
 
-struct Particle {
+typedef struct {
     double x, y; // position
     double qz, qw; // parts of rotation quaternion
-    struct Particle *cll_copy; // pointer to particle in cell linked list
-};
-typedef struct Particle Particle;
+    int cll_cell_idx; // index of cell in cll
+    int id; // index of particle in grid
+} Particle;
 
 typedef struct {
     ParticleType type; // type of particle
@@ -23,6 +23,7 @@ typedef struct {
 
 typedef struct {
     Particle *cells; // array of particles of shape (n_x * n_y * max_particles)
+    int *head; // array of counts of particles in each cell
     long n_x, n_y; // number of cells in x and y directions
     long max_particles; // maximum number of particles per cell
     double s_x, s_y; // size of cells in x and y directions

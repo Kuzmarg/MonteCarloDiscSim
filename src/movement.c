@@ -14,14 +14,12 @@ int random_move(Particle *p, const Grid *grid, CellLinkedGrid *cll) {
         moved_particle.qz = sin(angle/2);
     }
 
-    p->cll_copy->qw = 0; // remove particle from cll
-    // check for boundary conditions
+    cll_remove_point(p, cll);
     moved_particle.x = fmod(moved_particle.x + grid->Lx, grid->Lx);
     moved_particle.y = fmod(moved_particle.y + grid->Ly, grid->Ly);
     if (!cll_check_overlap(&moved_particle, cll, grid)) {
         *p = moved_particle;
-        cll_add_point(p, cll);
     }
-    p->cll_copy->qw = 1; // add particle back to cll
+    cll_add_point(p, cll);
     return 0;
 }

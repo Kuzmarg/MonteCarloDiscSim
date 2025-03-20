@@ -6,6 +6,7 @@ ovito
 
 # Compiled files
 build
+.cache
 
 # Generated files
 data
