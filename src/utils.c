@@ -37,6 +37,12 @@ double distance(const Particle* p1, const Particle* p2, const Grid* grid) {
     return sqrt(pow(dx, 2) + pow(dy, 2));
 }
 
+double distance_patch(const Patch *p1, const Patch *p2, const Grid *grid) {
+    double dx = fmin(fabs(p1->x - p2->x), fabs(grid->Lx - fabs(p1->x - p2->x)));
+    double dy = fmin(fabs(p1->y - p2->y), fabs(grid->Ly - fabs(p1->y - p2->y)));
+    return sqrt(pow(dx, 2) + pow(dy, 2));
+}
+
 int write_pdb(const char* filename, const Grid* grid) {
     FILE *file = fopen(filename, "w");
     if (file == NULL) return 1;

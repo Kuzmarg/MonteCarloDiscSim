@@ -13,6 +13,8 @@ int cll_allocate(CellLinkedGrid *cll, const Grid *grid);
 
 int cll_check_overlap(const Particle *p1, CellLinkedGrid *cll, const Grid* grid);
 
+double cll_patch_energy(const Particle *p1, CellLinkedGrid *cll, const Grid* grid);
+
 int cll_add_point(Particle *p, CellLinkedGrid *cll);
 
 int cll_remove_point(Particle *p, CellLinkedGrid *cll);

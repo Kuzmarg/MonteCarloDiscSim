@@ -3,6 +3,8 @@
     
 #include "types.h"
 
+double patch_energy(const Particle *p1, const Particle *p2, const Grid* grid);
+
 int square_overlap(const Particle *p1, const Particle *p2, const Grid *grid);
 
 int circle_overlap(const Particle *p1, const Particle *p2, const Grid *grid);

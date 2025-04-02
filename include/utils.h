@@ -16,6 +16,8 @@ int rand_int(int high);
 
 double distance(const Particle* p1, const Particle* p2, const Grid* grid);
 
+double distance_patch(const Patch* p1, const Patch* p2, const Grid* grid);
+
 int write_pdb(const char* filename, const Grid* grid);
 
 int write_xyz(const char* filename, const Grid* grid);

@@ -3,6 +3,32 @@
 
 #include <math.h>
 
+double patch_energy(const Particle *p1, const Particle *p2, const Grid* grid) {
+    double cos_t1 = 2*p1->qw*p1->qw - 1;
+    double sin_t1 = 2*p1->qw*p1->qz;
+    double cos_t2 = 2*p2->qw*p2->qw - 1;
+    double sin_t2 = 2*p2->qw*p2->qz;
+
+    for (int p1_idx = 0; p1_idx < grid->n_patches; p1_idx++) {
+        double x_1, y_1;
+        rotate_point(grid->patches[p1_idx].x, grid->patches[p1_idx].y, cos_t1, sin_t1, &x_1, &y_1);
+        x_1 += p1->x;
+        y_1 += p1->y;
+        Patch patch1 = {x_1, y_1};
+        for (int p2_idx = 0; p2_idx < grid->n_patches; p2_idx++) {
+            double x_2, y_2;
+            rotate_point(grid->patches[p2_idx].x, grid->patches[p2_idx].y, cos_t2, sin_t2, &x_2, &y_2);
+            x_2 += p2->x;
+            y_2 += p2->y;
+            Patch patch2 = {x_2, y_2};
+            if (distance_patch(&patch1, &patch2, grid) < grid->patch_size) {
+                return grid->delta_energy;
+            }
+        }
+    }
+    return 0;
+}
+
 int square_overlap(const Particle *p1, const Particle *p2, const Grid *grid) {
     if (distance(p1, p2, grid) > sqrt(2) * grid->size) return 0;
     if (distance(p1, p2, grid) < grid->size) return 1;

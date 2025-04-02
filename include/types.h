@@ -11,7 +11,6 @@ typedef struct {
     double qz, qw; // parts of rotation quaternion
     int cll_cell_idx; // index of cell in cll
     int id; // index of particle in grid
-    double energy; // energy of the particle
 } Particle;
 
 typedef struct {
@@ -28,6 +27,8 @@ typedef struct {
     double patch_size; // size of patches
     long n_patches; // number of patches on each particle
     double delta_energy; // energy of the particle
+    int simulation_iterations; // number of iterations for the simulation
+    int count_move_cells; // number of cells to move
 } Grid;
 
 typedef struct {

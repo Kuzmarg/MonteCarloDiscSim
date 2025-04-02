@@ -22,6 +22,12 @@ int random_move(Particle *p, const Grid *grid, CellLinkedGrid *cll) {
     moved_particle.x = fmod(moved_particle.x + grid->Lx, grid->Lx);
     moved_particle.y = fmod(moved_particle.y + grid->Ly, grid->Ly);
     if (!cll_check_overlap(&moved_particle, cll, grid)) {
+        double delta_energy = cll_patch_energy(&moved_particle, cll, grid) - cll_patch_energy(p, cll, grid);
+        rand_sample = rand_double(1);
+        if (delta_energy > 0 && rand_sample > exp(-delta_energy)) {
+            cll_add_point(p, cll);
+            return 0;
+        }
         *p = moved_particle;
     }
     cll_add_point(p, cll);

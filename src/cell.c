@@ -29,12 +29,12 @@ int cll_allocate(CellLinkedGrid *cll, const Grid *grid) {
     switch (grid->type)
     {
         case CIRCLE:
-            cll-> s_x = grid->size;
+            cll-> s_x = grid->size + grid->patch_size;
             cll->max_particles = 4;
             cll->check_overlap = circle_overlap;
             break;
         case SQUARE:
-            cll->s_x = grid->size * sqrt(2);
+            cll->s_x = grid->size * sqrt(2) + grid->patch_size;
             cll->max_particles = 5;
             cll->check_overlap = square_overlap;
             break;
@@ -60,6 +60,23 @@ int cll_check_overlap(const Particle *p1, CellLinkedGrid *cll, const Grid* grid)
         }
     }
     return 0;
+}
+
+double cll_patch_energy(const Particle *p1, CellLinkedGrid *cll, const Grid* grid) {
+    double energy = 0;
+    long x_idx = (long) (p1->x / cll->s_x);
+    long y_idx = (long) (p1->y / cll->s_x);
+    for (int i = -1; i < 2; i++) {
+        for (int j = -1; j < 2; j++) {
+            size_t idx = (x_idx + i + cll->n_x) % cll->n_x;
+            size_t idy = (y_idx + j + cll->n_y) % cll->n_y;
+            size_t cell_idx = idx * cll->n_y + idy;
+            for (int k = 0; k < cll->head[cell_idx]; k++) {
+                energy += patch_energy(p1, &cll->cells[cell_idx * cll->max_particles + k], grid);
+            }
+        }
+    }
+    return energy;
 }
 
 int cll_add_point(Particle *p, CellLinkedGrid *cll) {
