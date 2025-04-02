@@ -50,9 +50,9 @@ int write_pdb(const char* filename, const Grid* grid) {
 int write_xyz(const char* filename, const Grid* grid) {
     FILE *file = fopen(filename, "w");
     if (file == NULL) return 1;
-    fprintf(file, "%ld\n", grid->N);
+    fprintf(file, "%ld\n", grid->N + grid->N * grid->n_patches);
     fprintf(file, "Properties=species:S:1:pos:R:3:orientation:R:4:aspherical_shape:R:3\n");
-    for (size_t idx = 0; idx < grid->N; idx++)
+    for (size_t idx = 0; idx < grid->N; idx++) {
         fprintf(file, "%c %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n",
             grid->type,
             grid->points[idx].x,
@@ -66,6 +66,27 @@ int write_xyz(const char* filename, const Grid* grid) {
             grid->size/2,
             0.2
         );
+
+        // Write patches
+        for (size_t j = 0; j < grid->n_patches; j++) {
+            double cos_t = 2*grid->points[idx].qw*grid->points[idx].qw - 1;
+            double sin_t = 2*grid->points[idx].qw*grid->points[idx].qz;
+            double x_rot, y_rot;
+            rotate_point(grid->patches[j].x, grid->patches[j].y, cos_t, sin_t, &x_rot, &y_rot);
+            fprintf(file, "P %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n",
+                grid->points[idx].x + x_rot,
+                grid->points[idx].y + y_rot,
+                0.0,
+                0.0,
+                0.0,
+                grid->points[idx].qz,
+                grid->points[idx].qw,
+                grid->patch_size/2,
+                grid->patch_size/2,
+                0.2
+            );
+        }
+    }
     fclose(file);
     return 0;
 }

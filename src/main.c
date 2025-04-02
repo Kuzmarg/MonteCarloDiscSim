@@ -19,6 +19,15 @@ int main(int argc, char* argv[]) {
     double Ly = atof(argv[5]);
     Grid grid = {pt, p, size, N, Lx, Ly};
 
+    // For testing of patches
+    grid.n_patches = 4;
+    grid.patch_size = size / 5;
+    grid.patches = malloc(grid.n_patches * sizeof(Patch));
+    grid.patches[0] = (Patch){size/2, 0};
+    grid.patches[1] = (Patch){0, size/2};
+    grid.patches[2] = (Patch){-size/2, 0};
+    grid.patches[3] = (Patch){0, -size/2};
+
     char *output_folder = argv[6];
     size_t name_len = strlen(output_folder);
     

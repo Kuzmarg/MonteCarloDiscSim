@@ -11,7 +11,12 @@ typedef struct {
     double qz, qw; // parts of rotation quaternion
     int cll_cell_idx; // index of cell in cll
     int id; // index of particle in grid
+    double energy; // energy of the particle
 } Particle;
+
+typedef struct {
+    double x, y; // position
+} Patch;
 
 typedef struct {
     ParticleType type; // type of particle
@@ -19,6 +24,9 @@ typedef struct {
     double size; // diameter for circles, side length for squares
     long N; // number of particles
     double Lx, Ly; // box dimensions
+    Patch *patches; // array of patch coordinates that are set on each particle
+    double patch_size; // size of patches
+    long n_patches; // number of patches on each particle
 } Grid;
 
 typedef struct {
