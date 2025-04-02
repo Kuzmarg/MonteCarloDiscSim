@@ -1,5 +1,9 @@
 #include "utils.h"
 
+#include <math.h>
+#include <stdlib.h>
+#include <stdio.h>
+
 void get_square_vertices(double x, double y, double s, double cos_t, double sin_t, double *vertices) {
     double x_rot, y_rot;
     for (int i = 0; i < 4; i++) {
@@ -47,13 +51,21 @@ int write_pdb(const char* filename, const Grid* grid) {
     return 0;
 }
 
+// TODO: optimize write
 int write_xyz(const char* filename, const Grid* grid) {
     FILE *file = fopen(filename, "w");
     if (file == NULL) return 1;
-    fprintf(file, "%ld\n", grid->N + grid->N * grid->n_patches);
-    fprintf(file, "Properties=species:S:1:pos:R:3:orientation:R:4:aspherical_shape:R:3\n");
+    // 92 is the size of a line for each particle, 100 is for the header
+    char *file_string = malloc((92*grid->N*(grid->n_patches + 1) + 100) * sizeof(char));
+    size_t offset = 0;
+
+    offset += sprintf(file_string + offset, "%ld\n", grid->N + grid->N * grid->n_patches);
+    offset += sprintf(file_string + offset, "Properties=species:S:1:pos:R:3:orientation:R:4:aspherical_shape:R:3\n");
+    // sprintf(file, "%ld\n", grid->N + grid->N * grid->n_patches);
+    // fprintf(file, "Properties=species:S:1:pos:R:3:orientation:R:4:aspherical_shape:R:3\n");
     for (size_t idx = 0; idx < grid->N; idx++) {
-        fprintf(file, "%c %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n",
+        // fprintf(file, "%c %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n",
+        offset += sprintf(file_string + offset, "%c %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n",
             grid->type,
             grid->points[idx].x,
             grid->points[idx].y,
@@ -73,7 +85,8 @@ int write_xyz(const char* filename, const Grid* grid) {
             double sin_t = 2*grid->points[idx].qw*grid->points[idx].qz;
             double x_rot, y_rot;
             rotate_point(grid->patches[j].x, grid->patches[j].y, cos_t, sin_t, &x_rot, &y_rot);
-            fprintf(file, "P %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n",
+            // fprintf(file, "P %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n",
+            offset += sprintf(file_string + offset, "P %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n",
                 grid->points[idx].x + x_rot,
                 grid->points[idx].y + y_rot,
                 0.0,
@@ -87,6 +100,7 @@ int write_xyz(const char* filename, const Grid* grid) {
             );
         }
     }
+    fprintf(file, "%s", file_string);
     fclose(file);
     return 0;
 }

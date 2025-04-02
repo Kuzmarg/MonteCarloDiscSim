@@ -4,8 +4,6 @@
 #define MAX_GEN_ITERATIONS 10000
 
 #include "types.h"
-#include "particles.h"
-#include "utils.h"
 
 int grid_allocate(Grid *grid);
 

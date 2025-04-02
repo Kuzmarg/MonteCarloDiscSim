@@ -1,4 +1,7 @@
 #include "particles.h"
+#include "utils.h"
+
+#include <math.h>
 
 int square_overlap(const Particle *p1, const Particle *p2, const Grid *grid) {
     if (distance(p1, p2, grid) > sqrt(2) * grid->size) return 0;

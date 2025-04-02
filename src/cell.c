@@ -1,4 +1,10 @@
 #include "cell.h"
+#include "particles.h"
+#include "utils.h"
+
+#include <math.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 void set_random_particle(Particle *p, const Grid *grid) {
     p->x = rand_double(grid->Lx);
@@ -64,7 +70,7 @@ int cll_add_point(Particle *p, CellLinkedGrid *cll) {
     if (i >= cll->max_particles) return 1;
     p->cll_cell_idx = cell_idx;
     cll->cells[cell_idx * cll->max_particles + i] = *p;
-    cll->head[cell_idx] = (i + 1);
+    cll->head[cell_idx]++;
     return 0;
 }
 

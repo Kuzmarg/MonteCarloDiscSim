@@ -1,9 +1,6 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include <stdlib.h>
-#include <math.h>
-#include <stdio.h>
 #include <stdbool.h>
 #include "types.h"
 

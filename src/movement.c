@@ -1,4 +1,8 @@
 #include "movement.h"
+#include "cell.h"
+#include "utils.h"
+
+#include <math.h>
 
 int random_move(Particle *p, const Grid *grid, CellLinkedGrid *cll) {
     double rand_sample = rand_double(1);

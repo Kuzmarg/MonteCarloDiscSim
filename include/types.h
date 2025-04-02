@@ -27,6 +27,7 @@ typedef struct {
     Patch *patches; // array of patch coordinates that are set on each particle
     double patch_size; // size of patches
     long n_patches; // number of patches on each particle
+    double delta_energy; // energy of the particle
 } Grid;
 
 typedef struct {

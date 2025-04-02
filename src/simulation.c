@@ -1,4 +1,10 @@
 #include "simulation.h"
+#include "cell.h"
+#include "utils.h"
+#include "movement.h"
+
+#include <stdlib.h>
+#include <stdio.h>
 
 #define SIMULATION_ITERATIONS 100
 #define COUNT_MOVE_CELLS 10000

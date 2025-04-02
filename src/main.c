@@ -1,6 +1,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "simulation.h"
 
 int main(int argc, char* argv[]) {
@@ -22,6 +23,7 @@ int main(int argc, char* argv[]) {
     // For testing of patches
     grid.n_patches = 4;
     grid.patch_size = size / 5;
+    grid.delta_energy = 0.1;
     grid.patches = malloc(grid.n_patches * sizeof(Patch));
     grid.patches[0] = (Patch){size/2, 0};
     grid.patches[1] = (Patch){0, size/2};
