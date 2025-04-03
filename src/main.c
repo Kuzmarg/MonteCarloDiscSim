@@ -12,7 +12,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    ParticleType pt = atoi(argv[1]);
+    ParticleType pt = argv[1][0] == 'C' ? CIRCLE : SQUARE;
     Particle *p = NULL;
     double size = atof(argv[2]);
     long N = atol(argv[3]);

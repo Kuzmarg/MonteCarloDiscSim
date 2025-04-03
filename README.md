@@ -11,7 +11,6 @@
 
 # Запуск
 
-(67 - **C**ircle, 83 - **S**quare)
 ```bash
-./build/simulation <67/83> <particle_size> <number_of_particles> <Lx> <Ly> <output_file>
+./build/simulation <C(ircle)/S(quare)> <particle_size> <number_of_particles> <Lx> <Ly> <output_file>
 ```
