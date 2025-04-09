@@ -16,12 +16,15 @@ void set_random_particle(Particle *p, const Grid *grid) {
 }
 
 int grid_allocate(Grid *grid) {
-    grid->points = (Particle*)calloc(grid->N, sizeof(Particle));
+    // grid->points = (Particle*)calloc(grid->N, sizeof(Particle));
+    cudaMallocManaged(&grid->points, grid->N * sizeof(Particle));
+    memset(grid->points, 0, grid->N * sizeof(Particle));
     return grid->points == NULL;
 }
 
 int grid_free(Grid *grid) {
-    free(grid->points);
+    // free(grid->points);
+    cudaFree(grid->points);
     return 0;
 }
 
@@ -41,9 +44,13 @@ int cll_allocate(CellLinkedGrid *cll, const Grid *grid) {
     }
     cll->n_x = ceil(grid->Lx / cll->s_x);
     cll->n_y = ceil(grid->Ly / cll->s_x);
-    cll->cells = (Particle*)calloc(cll->n_x * cll->n_y * cll->max_particles, sizeof(Particle));
-    cll->head = (int*)calloc(cll->n_x * cll->n_y, sizeof(int));
-    return cll->cells == NULL;
+    // cll->cells = (Particle*)calloc(cll->n_x * cll->n_y * cll->max_particles, sizeof(Particle));
+    // cll->head = (int*)calloc(cll->n_x * cll->n_y, sizeof(int));
+    cudaMallocManaged(&cll->cells, cll->n_x * cll->n_y * cll->max_particles * sizeof(Particle));
+    cudaMallocManaged(&cll->head, cll->n_x * cll->n_y * sizeof(int));
+    memset(cll->cells, 0, cll->n_x * cll->n_y * cll->max_particles * sizeof(Particle));
+    memset(cll->head, 0, cll->n_x * cll->n_y * sizeof(int));
+    return cll->cells == NULL || cll->head == NULL;
 }
 
 int cll_check_overlap(const Particle *p1, CellLinkedGrid *cll, const Grid* grid) {
@@ -106,8 +113,10 @@ int cll_remove_point(Particle *p, CellLinkedGrid *cll) {
 }
 
 int cll_free(CellLinkedGrid *cll) {
-    free(cll->cells);
-    free(cll->head);
+    // free(cll->cells);
+    // free(cll->head);
+    cudaFree(cll->cells);
+    cudaFree(cll->head);
     return 0;
 }
 

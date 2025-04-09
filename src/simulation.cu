@@ -21,7 +21,7 @@ int simulate_random(Grid *grid, const char *output_folder) {
         sprintf(filename, "%s/%06d.xyz", output_folder, i + 1);
         write_code = write_xyz(filename, grid);
         if (write_code) return 1;
-        printf("Iteration %d finished\n", i + 1); 
+        printf("Iteration %d finished\n", i + 1);
     }
     grid_free(grid);
     cll_free(&cll);
