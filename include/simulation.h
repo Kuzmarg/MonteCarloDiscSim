@@ -3,6 +3,7 @@
 
 #include "types.h"
 
-int simulate_random(Grid *grid, const char *output_folder);
+int simulate_random(Config *config);
+int simulate_random_cuda(Config *config);
 
 #endif // SIMULATION_H

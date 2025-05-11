@@ -6,24 +6,26 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-int simulate_random(Grid *grid, const char *output_folder) {
+int simulate_random(Config *config) {
     CellLinkedGrid cll;
-    random_gen(grid, &cll);
+    random_gen(config, &cll);
     char filename[256];
-    sprintf(filename, "%s/000000.xyz", output_folder);
-    int write_code = write_xyz(filename, grid);
+    sprintf(filename, "%s/000000.xyz", config->output_folder);
+    int write_code = write_xyz(filename, config, &cll);
     if (write_code) return 1;
-    for (int i = 0; i < grid->simulation_iterations; i++) {
-        for (size_t idx = 0; idx < grid->count_move_cells; idx++) {
-            size_t move_idx = rand_int(grid->N);
-            random_move(&grid->points[move_idx], grid, &cll);
+    for (int i = 1; i <= config->num_steps; i++) {
+        for (size_t idx = 0; idx < config->N; idx++) {
+            size_t move_idx = rand_int(config->N);
+            random_move(&cll.particles[move_idx], config, &cll);
         }
-        sprintf(filename, "%s/%06d.xyz", output_folder, i + 1);
-        write_code = write_xyz(filename, grid);
-        if (write_code) return 1;
-        printf("Iteration %d finished\n", i + 1);
+
+        if (i % config->save_interval == 0) {
+            sprintf(filename, "%s/%06d.xyz", config->output_folder, i);
+            write_code = write_xyz(filename, config, &cll);
+            if (write_code) return 1;
+            printf("Iteration %d finished\n", i);
+        }
     }
-    grid_free(grid);
     cll_free(&cll);
     return 0;
 }

@@ -14,12 +14,10 @@ double rand_double(double high);
 
 int rand_int(int high);
 
-double distance(const Particle* p1, const Particle* p2, const Grid* grid);
+double distance(const Particle* p1, const Particle* p2, const Config* config);
 
-double distance_patch(const Patch* p1, const Patch* p2, const Grid* grid);
+double distance_patch(const Patch* p1, const Patch* p2, const Config* config);
 
-int write_pdb(const char* filename, const Grid* grid);
-
-int write_xyz(const char* filename, const Grid* grid);
+int write_xyz(const char* filename, const Config* config, const CellLinkedGrid* cll);
 
 #endif // UTILS_H

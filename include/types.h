@@ -19,25 +19,32 @@ typedef struct {
 
 typedef struct {
     ParticleType type; // type of particle
-    Particle *points; // array of particles
     double size; // diameter for circles, side length for squares
-    long N; // number of particles
-    double Lx, Ly; // box dimensions
-    Patch *patches; // array of patch coordinates that are set on each particle
+    int num_patches; // number of patches on the particle
     double patch_size; // size of patches
-    long n_patches; // number of patches on each particle
-    double delta_energy; // energy of the particle
-    int simulation_iterations; // number of iterations for the simulation
-    int count_move_cells; // number of cells to move
-} Grid;
+    double energy_delta; // energy of the patch interaction
+    Patch *patch_coordinates; // array of patch coordinates that are set on each particle
+
+    double max_rotation; // maximum rotation of the particle per step
+    double max_translation; // maximum translation of the particle per step
+
+    int N; // number of particles
+    double Lx, Ly; // box dimensions
+    int num_steps; // number of iterations for the simulation
+    int save_interval; // interval for saving the simulation
+
+    const char *output_folder; // folder to save the simulation
+    const char *output_energy_file; // file to save the energy
+} Config;
 
 typedef struct {
+    Particle *particles; // array of all particles in the simulation
     Particle *cells; // array of particles of shape (n_x * n_y * max_particles)
     int *head; // array of counts of particles in each cell
     long n_x, n_y; // number of cells in x and y directions
     long max_particles; // maximum number of particles per cell
     double s_x, s_y; // size of cells in x and y directions
-    int (*check_overlap)(const Particle*, const Particle*, const Grid*); // function to check overlap
+    int (*check_overlap)(const Particle*, const Particle*, const Config*); // function to check overlap
 } CellLinkedGrid;
 
 #endif // TYPES_H

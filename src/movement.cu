@@ -4,7 +4,7 @@
 
 #include <math.h>
 
-int random_move(Particle *p, const Grid *grid, CellLinkedGrid *cll) {
+int random_move(Particle *p, const Config *grid, CellLinkedGrid *cll) {
     double rand_sample = rand_double(1);
     Particle moved_particle = *p;
     if (rand_sample < 0.5) {

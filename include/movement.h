@@ -3,6 +3,6 @@
 
 #include "types.h"
 
-int random_move(Particle *p, const Grid *grid, CellLinkedGrid *cll);
+int random_move(Particle *p, const Config *grid, CellLinkedGrid *cll);
 
 #endif // MOVEMENT_H
