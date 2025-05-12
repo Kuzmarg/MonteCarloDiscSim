@@ -37,7 +37,7 @@ __host__ void random_move(Particle *p, const Config *config, CellLinkedGrid *cll
 }
 
 __global__ void random_move_kernel(const Config *config, CellLinkedGrid *cll, curandState* states, int stage) {
-    unsigned rand_idx = threadIdx.x;
+    unsigned int thread_id = threadIdx.x;
     unsigned int cells_per_thread_x = cll->n_x / config->Nx_cuda, remainder_x = cll->n_x % config->Nx_cuda;
     unsigned int cells_per_thread_y = cll->n_y / config->Ny_cuda, remainder_y = cll->n_y % config->Ny_cuda;
 
@@ -49,77 +49,46 @@ __global__ void random_move_kernel(const Config *config, CellLinkedGrid *cll, cu
     unsigned int y_end = (y_idx + 1) * cells_per_thread_y + min(y_idx + 1, remainder_y);
 
     unsigned int X0, X1, Y0, Y1; // start and end cell coordinates for this step
-    switch (stage) {
-    case 0:
-        X0 = x_start;
-        X1 = (x_start + x_end) / 2;
-        Y0 = y_start;
-        Y1 = (y_start + y_end) / 2;
-        break;
-    case 1:
-        X0 = (x_start + x_end) / 2;
-        X1 = x_end;
-        Y0 = y_start;
-        Y1 = (y_start + y_end) / 2;
-        break;
-    case 2:
-        X0 = x_start;
-        X1 = (x_start + x_end) / 2;
-        Y0 = (y_start + y_end) / 2;
-        Y1 = y_end;
-        break;
-    case 3:
-        X0 = (x_start + x_end) / 2;
-        X1 = x_end;
-        Y0 = (y_start + y_end) / 2;
-        Y1 = y_end;
-        break;
-    }
+    X0 = x_start + (x_end - x_start) / 2 * (stage % 2);
+    Y0 = y_start + (y_end - y_start) / 2 * (stage / 2);
+    X1 = (x_start + x_end) / 2 + (x_end - x_start) / 2 * (stage % 2);
+    Y1 = (y_start + y_end) / 2 + (y_end - y_start) / 2 * (stage / 2);
 
-    unsigned int num_particles = 0;
-    for (unsigned int x = X0; x < X1; x++)
-        for (unsigned int y = Y0; y < Y1; y++)
-            num_particles += cll->head[x * cll->n_y + y];
-    if (num_particles == 0) return;
-    unsigned int rand_particle = rand_int_cuda(num_particles, &states[rand_idx]);
-    unsigned int cell_idx = 0;
-    unsigned int particle_idx = 0;
-    for (unsigned int x = X0; x < X1; x++) {
-        for (unsigned int y = Y0; y < Y1; y++) {
-            unsigned int cell_count = cll->head[x * cll->n_y + y];
-            if (rand_particle < cell_count) {
-                cell_idx = x * cll->n_y + y;
-                particle_idx = rand_particle;
-                break;
-            }
-            rand_particle -= cell_count;
-        }
-        if (rand_particle < cll->head[cell_idx]) break;
-    }
-    Particle p = cll->cells[cell_idx * cll->max_particles + particle_idx];
+    unsigned int rand_cell = rand_int_cuda((X1 - X0) * (Y1 - Y0), &states[thread_id]);
+    unsigned int cell_x = X0 + rand_cell / (Y1 - Y0);
+    unsigned int cell_y = Y0 + rand_cell % (Y1 - Y0);
+    unsigned int cell_idx = cell_x * cll->n_y + cell_y;
+    unsigned int cell_size = cll->head[cell_idx];
+    if (cell_size == 0) return;
+    unsigned int rand_particle = rand_int_cuda(cell_size, &states[thread_id]);
+    Particle p = cll->cells[cell_idx * cll->max_particles + rand_particle];
     Particle moved_particle = p;
-    double rand_sample = rand_double_cuda(1, &states[rand_idx]);
+
+    double rand_sample = rand_double_cuda(1, &states[thread_id]);
     if (rand_sample < 0.5) {
-        double angle = rand_double_cuda(2 * M_PI, &states[rand_idx]);
-        double distance = rand_double_cuda(config->max_translation, &states[rand_idx]);
+        double angle = rand_double_cuda(2 * M_PI, &states[thread_id]);
+        double distance = rand_double_cuda(config->max_translation, &states[thread_id]);
         moved_particle.x += distance * cos(angle);
         moved_particle.y += distance * sin(angle);
         moved_particle.x = fmod(moved_particle.x + config->Lx, config->Lx);
         moved_particle.y = fmod(moved_particle.y + config->Ly, config->Ly);
     } else {
-        double angle = rand_double_cuda(config->max_rotation, &states[rand_idx]);
+        double angle = rand_double_cuda(config->max_rotation, &states[thread_id]);
         moved_particle.qw = cos(angle/2);
         moved_particle.qz = sin(angle/2);
     }
     cll_remove_point(&p, cll);
-    if (!cll_check_overlap(&moved_particle, cll, config)) {
-        double delta_energy = cll_patch_energy(&moved_particle, cll, config) - cll_patch_energy(&p, cll, config);
-        rand_sample = rand_double_cuda(1, &states[rand_idx]);
-        if (delta_energy > 0 && rand_sample > exp(-delta_energy)) {
-            cll_add_point(&p, cll);
-            return;
-        }
-        p = moved_particle;
+    if (cll_check_overlap(&moved_particle, cll, config)) {
+        cll_add_point(&p, cll);
+        return;
     }
+    
+    double delta_energy = cll_patch_energy(&moved_particle, cll, config) - cll_patch_energy(&p, cll, config);
+    rand_sample = rand_double_cuda(1, &states[thread_id]);
+    if (delta_energy > 0 && rand_sample > exp(-delta_energy)) {
+        cll_add_point(&p, cll);
+        return;
+    }
+    p = moved_particle;
     cll_add_point(&p, cll);
 }

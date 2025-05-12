@@ -58,8 +58,8 @@ __host__ int cll_copy_host(CellLinkedGrid *cll, CellLinkedGrid *cll_cuda, Config
 }
 
 __host__ __device__ int cll_check_overlap(const Particle *p1, CellLinkedGrid *cll, const Config* config) {
-    long x_idx = (long) (p1->x / cll->s_x);
-    long y_idx = (long) (p1->y / cll->s_x);
+    int x_idx = (int) (p1->x / cll->s_x);
+    int y_idx = (int) (p1->y / cll->s_x);
     for (int i = -1; i < 2; i++) {
         for (int j = -1; j < 2; j++) {
             size_t idx = (x_idx + i + cll->n_x) % cll->n_x;
@@ -82,8 +82,8 @@ __host__ __device__ int cll_check_overlap(const Particle *p1, CellLinkedGrid *cl
 
 __host__ __device__ double cll_patch_energy(const Particle *p1, CellLinkedGrid *cll, const Config* config) {
     double energy = 0;
-    long x_idx = (long) (p1->x / cll->s_x);
-    long y_idx = (long) (p1->y / cll->s_x);
+    int x_idx = (int) (p1->x / cll->s_x);
+    int y_idx = (int) (p1->y / cll->s_x);
     for (int i = -1; i < 2; i++) {
         for (int j = -1; j < 2; j++) {
             size_t idx = (x_idx + i + cll->n_x) % cll->n_x;
@@ -106,8 +106,7 @@ __host__ __device__ int cll_add_point(Particle *p, CellLinkedGrid *cll) {
     p->cll_cell_idx = cell_idx;
     cll->cells[cell_idx * cll->max_particles + i] = *p;
     cll->head[cell_idx]++;
-    Particle p_copy = *p;
-    cll->particles[p->id] = p_copy;
+    cll->particles[p->id] = *p;
     return 0;
 }
 

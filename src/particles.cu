@@ -21,7 +21,9 @@ __host__ __device__ double patch_energy(const Particle *p1, const Particle *p2, 
             x_2 += p2->x;
             y_2 += p2->y;
             Patch patch2 = {x_2, y_2};
-            if (distance_patch(&patch1, &patch2, config) < config->patch_size) {
+            double dx = fmin(fabs(patch1.x - patch2.x), fabs(config->Lx - fabs(patch1.x - patch2.x)));
+            double dy = fmin(fabs(patch1.y - patch2.y), fabs(config->Ly - fabs(patch1.y - patch2.y)));
+            if (dx * dx + dy * dy < config->patch_size * config->patch_size) {
                 return config->energy_delta;
             }
         }
@@ -30,8 +32,10 @@ __host__ __device__ double patch_energy(const Particle *p1, const Particle *p2, 
 }
 
 __host__ __device__ int square_overlap(const Particle *p1, const Particle *p2, const Config *config) {
-    if (distance(p1, p2, config) > sqrt(2.0f) * config->size) return 0;
-    if (distance(p1, p2, config) < config->size) return 1;
+    double dx = fmin(fabs(p1->x - p2->x), fabs(config->Lx - fabs(p1->x - p2->x)));
+    double dy = fmin(fabs(p1->y - p2->y), fabs(config->Ly - fabs(p1->y - p2->y)));
+    if (dx * dx + dy * dy > 2.0f * config->size * config->size) return 0;
+    if (dx * dx + dy * dy < config->size * config->size) return 1;
 
     // rotation angles from quaternions
     double cos_t1, sin_t1, cos_t2, sin_t2;
@@ -42,7 +46,6 @@ __host__ __device__ int square_overlap(const Particle *p1, const Particle *p2, c
     double vertices1[8], vertices2[8];
     get_square_vertices(p1->x, p1->y, config->size, cos_t1, sin_t1, vertices1);
     get_square_vertices(p2->x, p2->y, config->size, cos_t2, sin_t2, vertices2);
-
     
     // rotate vertices of square 2 by -t1 to square 1's frame of reference and check for overlap
     for (int i = 0; i < 8; i += 2) {
@@ -70,5 +73,8 @@ __host__ __device__ int square_overlap(const Particle *p1, const Particle *p2, c
 }
 
 __host__ __device__ int circle_overlap(const Particle *p1, const Particle *p2, const Config *config) {
-    return distance(p1, p2, config) < config->size;
+    double dx = fmin(fabs(p1->x - p2->x), fabs(config->Lx - fabs(p1->x - p2->x)));
+    double dy = fmin(fabs(p1->y - p2->y), fabs(config->Ly - fabs(p1->y - p2->y)));
+    double sq_size = config->size * config->size;
+    return (dx * dx + dy * dy) < sq_size;
 }
