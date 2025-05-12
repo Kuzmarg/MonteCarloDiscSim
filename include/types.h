@@ -2,8 +2,8 @@
 #define TYPES_H
 
 typedef enum {
-    CIRCLE = 'C',
-    SQUARE = 'S',
+    CIRCLE,
+    SQUARE,
 } ParticleType;
 
 typedef struct {
@@ -18,6 +18,8 @@ typedef struct {
 } Patch;
 
 typedef struct {
+    bool cuda; // true if using CUDA
+
     ParticleType type; // type of particle
     double size; // diameter for circles, side length for squares
     int num_patches; // number of patches on the particle
@@ -32,6 +34,7 @@ typedef struct {
     double Lx, Ly; // box dimensions
     int num_steps; // number of iterations for the simulation
     int save_interval; // interval for saving the simulation
+    int Nx_cuda, Ny_cuda; // number of cells in x and y directions for CUDA
 
     const char *output_folder; // folder to save the simulation
     const char *output_energy_file; // file to save the energy
@@ -41,10 +44,9 @@ typedef struct {
     Particle *particles; // array of all particles in the simulation
     Particle *cells; // array of particles of shape (n_x * n_y * max_particles)
     int *head; // array of counts of particles in each cell
-    long n_x, n_y; // number of cells in x and y directions
-    long max_particles; // maximum number of particles per cell
+    int n_x, n_y; // number of cells in x and y directions
+    int max_particles; // maximum number of particles per cell
     double s_x, s_y; // size of cells in x and y directions
-    int (*check_overlap)(const Particle*, const Particle*, const Config*); // function to check overlap
 } CellLinkedGrid;
 
 #endif // TYPES_H

@@ -3,10 +3,10 @@
     
 #include "types.h"
 
-double patch_energy(const Particle *p1, const Particle *p2, const Config* config);
+__host__ __device__ double patch_energy(const Particle *p1, const Particle *p2, const Config* config);
 
-int square_overlap(const Particle *p1, const Particle *p2, const Config *config);
+__host__ __device__ int square_overlap(const Particle *p1, const Particle *p2, const Config *config);
 
-int circle_overlap(const Particle *p1, const Particle *p2, const Config *config);
+__host__ __device__ int circle_overlap(const Particle *p1, const Particle *p2, const Config *config);
 
 #endif // PARTICLES_H

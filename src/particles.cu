@@ -3,7 +3,7 @@
 
 #include <math.h>
 
-double patch_energy(const Particle *p1, const Particle *p2, const Config* config) {
+__host__ __device__ double patch_energy(const Particle *p1, const Particle *p2, const Config* config) {
     double cos_t1 = 2*p1->qw*p1->qw - 1;
     double sin_t1 = 2*p1->qw*p1->qz;
     double cos_t2 = 2*p2->qw*p2->qw - 1;
@@ -29,8 +29,8 @@ double patch_energy(const Particle *p1, const Particle *p2, const Config* config
     return 0;
 }
 
-int square_overlap(const Particle *p1, const Particle *p2, const Config *config) {
-    if (distance(p1, p2, config) > sqrt(2) * config->size) return 0;
+__host__ __device__ int square_overlap(const Particle *p1, const Particle *p2, const Config *config) {
+    if (distance(p1, p2, config) > sqrt(2.0f) * config->size) return 0;
     if (distance(p1, p2, config) < config->size) return 1;
 
     // rotation angles from quaternions
@@ -69,6 +69,6 @@ int square_overlap(const Particle *p1, const Particle *p2, const Config *config)
     return 0;
 }
 
-int circle_overlap(const Particle *p1, const Particle *p2, const Config *config) {
+__host__ __device__ int circle_overlap(const Particle *p1, const Particle *p2, const Config *config) {
     return distance(p1, p2, config) < config->size;
 }

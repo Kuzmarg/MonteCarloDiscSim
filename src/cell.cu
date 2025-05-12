@@ -6,41 +6,53 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-void set_random_particle(Particle *p, const Config *grid) {
-    p->x = rand_double(grid->Lx);
-    p->y = rand_double(grid->Ly);
-    if (grid->type == CIRCLE) { p->qw = 1; return; }
+__host__ void set_random_particle(Particle *p, const Config *config) {
+    p->x = rand_double(config->Lx);
+    p->y = rand_double(config->Ly);
+    if (config->type == CIRCLE) { p->qw = 1; return; }
     double angle = rand_double(M_PI / 2);
     p->qw = cos(angle/2);
     p->qz = sin(angle/2);
 }
 
-int cll_allocate(CellLinkedGrid *cll, const Config *config) {
+__host__ int cll_allocate(CellLinkedGrid *cll, const Config *config) {
     switch (config->type)
     {
         case CIRCLE:
             cll-> s_x = config->size + config->patch_size;
             cll->max_particles = 4;
-            cll->check_overlap = circle_overlap;
             break;
         case SQUARE:
             cll->s_x = config->size * sqrt(2) + config->patch_size;
             cll->max_particles = 5;
-            cll->check_overlap = square_overlap;
             break;
     }
     cll->n_x = ceil(config->Lx / cll->s_x);
     cll->n_y = ceil(config->Ly / cll->s_x);
-    cudaMallocManaged(&cll->particles, config->N * sizeof(Particle));
-    cudaMallocManaged(&cll->cells, cll->n_x * cll->n_y * cll->max_particles * sizeof(Particle));
-    cudaMallocManaged(&cll->head, cll->n_x * cll->n_y * sizeof(int));
+    cll->particles = (Particle*)malloc(config->N * sizeof(Particle));
+    cll->cells = (Particle*)malloc(cll->n_x * cll->n_y * cll->max_particles * sizeof(Particle));
+    cll->head = (int*)malloc(cll->n_x * cll->n_y * sizeof(int));
     memset(cll->particles, 0, config->N * sizeof(Particle));
     memset(cll->cells, 0, cll->n_x * cll->n_y * cll->max_particles * sizeof(Particle));
     memset(cll->head, 0, cll->n_x * cll->n_y * sizeof(int));
     return cll->cells == NULL || cll->head == NULL || cll->particles == NULL;
 }
 
-int cll_check_overlap(const Particle *p1, CellLinkedGrid *cll, const Config* grid) {
+__host__ int cll_copy_cuda(CellLinkedGrid *cll, CellLinkedGrid *cll_cuda) {
+    cudaMalloc((void**)&cll_cuda->cells, cll->n_x * cll->n_y * cll->max_particles * sizeof(Particle));
+    cudaMalloc((void**)&cll_cuda->head, cll->n_x * cll->n_y * sizeof(int));
+    cudaMemcpy(cll_cuda->cells, cll->cells, cll->n_x * cll->n_y * cll->max_particles * sizeof(Particle), cudaMemcpyHostToDevice);
+    cudaMemcpy(cll_cuda->head, cll->head, cll->n_x * cll->n_y * sizeof(int), cudaMemcpyHostToDevice);
+    return 0;
+}
+
+__host__ int cll_copy_host(CellLinkedGrid *cll, CellLinkedGrid *cll_cuda) {
+    cudaMemcpy(cll->cells, cll_cuda->cells, cll->n_x * cll->n_y * cll->max_particles * sizeof(Particle), cudaMemcpyDeviceToHost);
+    cudaMemcpy(cll->head, cll_cuda->head, cll->n_x * cll->n_y * sizeof(int), cudaMemcpyDeviceToHost);
+    return 0;
+}
+
+__host__ __device__ int cll_check_overlap(const Particle *p1, CellLinkedGrid *cll, const Config* config) {
     long x_idx = (long) (p1->x / cll->s_x);
     long y_idx = (long) (p1->y / cll->s_x);
     for (int i = -1; i < 2; i++) {
@@ -49,14 +61,21 @@ int cll_check_overlap(const Particle *p1, CellLinkedGrid *cll, const Config* gri
             size_t idy = (y_idx + j + cll->n_y) % cll->n_y;
             size_t cell_idx = idx * cll->n_y + idy;
             for (int k = 0; k < cll->head[cell_idx]; k++) {
-                if (cll->check_overlap(p1, &cll->cells[cell_idx * cll->max_particles + k], grid)) return 1;
+                switch (config->type) {
+                case CIRCLE:
+                    if (circle_overlap(p1, &cll->cells[cell_idx * cll->max_particles + k], config)) return 1;
+                    break;
+                case SQUARE:
+                    if (square_overlap(p1, &cll->cells[cell_idx * cll->max_particles + k], config)) return 1;
+                    break;
+                }
             }
         }
     }
     return 0;
 }
 
-double cll_patch_energy(const Particle *p1, CellLinkedGrid *cll, const Config* grid) {
+__host__ __device__ double cll_patch_energy(const Particle *p1, CellLinkedGrid *cll, const Config* config) {
     double energy = 0;
     long x_idx = (long) (p1->x / cll->s_x);
     long y_idx = (long) (p1->y / cll->s_x);
@@ -66,14 +85,14 @@ double cll_patch_energy(const Particle *p1, CellLinkedGrid *cll, const Config* g
             size_t idy = (y_idx + j + cll->n_y) % cll->n_y;
             size_t cell_idx = idx * cll->n_y + idy;
             for (int k = 0; k < cll->head[cell_idx]; k++) {
-                energy += patch_energy(p1, &cll->cells[cell_idx * cll->max_particles + k], grid);
+                energy += patch_energy(p1, &cll->cells[cell_idx * cll->max_particles + k], config);
             }
         }
     }
     return energy;
 }
 
-int cll_add_point(Particle *p, CellLinkedGrid *cll) {
+__host__ __device__ int cll_add_point(Particle *p, CellLinkedGrid *cll) {
     long x_idx = (long) (p->x / cll->s_x);
     long y_idx = (long) (p->y / cll->s_x);
     size_t cell_idx = x_idx * cll->n_y + y_idx;
@@ -85,7 +104,7 @@ int cll_add_point(Particle *p, CellLinkedGrid *cll) {
     return 0;
 }
 
-int cll_remove_point(Particle *p, CellLinkedGrid *cll) {
+__host__ __device__ int cll_remove_point(Particle *p, CellLinkedGrid *cll) {
     int cell_idx = p->cll_cell_idx;
     int cell_count = cll->head[cell_idx];
     for (int i = 0; i < cell_count; i++) {
@@ -99,14 +118,21 @@ int cll_remove_point(Particle *p, CellLinkedGrid *cll) {
     return 1;
 }
 
-int cll_free(CellLinkedGrid *cll) {
-    cudaFree(cll->cells);
-    cudaFree(cll->head);
-    cudaFree(cll->particles);
+__host__ int cll_free_cuda(CellLinkedGrid *cll_cuda) {
+    cudaFree(cll_cuda->cells);
+    cudaFree(cll_cuda->head);
+    cudaFree(cll_cuda->particles);
     return 0;
 }
 
-int random_gen(Config *config, CellLinkedGrid *cll) {
+__host__ int cll_free(CellLinkedGrid *cll) {
+    free(cll->cells);
+    free(cll->head);
+    free(cll->particles);
+    return 0;
+}
+
+__host__ int random_gen(Config *config, CellLinkedGrid *cll) {
     if (cll_allocate(cll, config) != 0) return 1;
 
     size_t num_generated = config->N;

@@ -36,14 +36,15 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    Config config;
+
     // CPU or CUDA run
-    bool cuda;
     const char *run_type;
     if (config_lookup_string(&cfg, "run_type", &run_type)) {
         if (strcmp(run_type, "CPU") == 0) {
-            cuda = false;
+            config.cuda = false;
         } else if (strcmp(run_type, "CUDA") == 0) {
-            cuda = true;
+            config.cuda = true;
         } else {
             fprintf(stderr, "Invalid run type specified in config file\n");
             config_destroy(&cfg);
@@ -55,9 +56,22 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    if (config.cuda)
+    {
+        if (config_lookup_int(&cfg, "Nx_cuda", &config.Nx_cuda) && config_lookup_int(&cfg, "Ny_cuda", &config.Ny_cuda)) {
+            if (config.Nx_cuda <= 0 || config.Ny_cuda <= 0) {
+                fprintf(stderr, "Invalid number of CUDA cells specified in config file\n");
+                config_destroy(&cfg);
+                return 1;
+            }
+        } else {
+            fprintf(stderr, "No number of CUDA cells specified in config file\n");
+            config_destroy(&cfg);
+            return 1;
+        }
+    }
     
     ////////////////////////////////////////////////////////////////////////////////
-    Config config;
 
     const char *type_str;
     if (config_lookup_string(&cfg, "particle_type", &type_str)) {
@@ -252,7 +266,7 @@ int main(int argc, char* argv[]) {
     ////////////////////////////////////////////////////////////////////////////////
 
 
-    printf("Running simulation with %s\n", cuda ? "CUDA" : "CPU");
+    printf("Running simulation with %s\n", config.cuda ? "CUDA" : "CPU");
     printf("Particle type: %s\n", config.type == CIRCLE ? "CIRCLE" : "SQUARE");
     printf("Particle size: %f\n", config.size);
     printf("Number of patches: %d\n", config.num_patches);
@@ -272,9 +286,12 @@ int main(int argc, char* argv[]) {
     }
     printf("\n");
 
-    if (!cuda)
-        return simulate_random(&config);
-
-    // return simulate_random_cuda(&config);
-    return 0;
+    int result;
+    if (!config.cuda)
+        result = simulate_random(&config);
+    else
+        result = simulate_random_cuda(&config);
+    grid_config_destroy_patches(&config);
+    config_destroy(&cfg);
+    return result;
 }
