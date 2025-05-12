@@ -37,14 +37,16 @@ __host__ void random_move(Particle *p, const Config *config, CellLinkedGrid *cll
 }
 
 __global__ void random_move_kernel(const Config *config, CellLinkedGrid *cll, curandState* states, int stage) {
-    unsigned rand_idx = blockIdx.x * blockDim.x + threadIdx.x;
-    unsigned int cells_per_thread_x = cll->n_x / gridDim.x, remainder_x = cll->n_x % blockDim.x;
-    unsigned int cells_per_thread_y = cll->n_y / blockDim.x, remainder_y = cll->n_y % blockDim.y;
+    unsigned rand_idx = threadIdx.x;
+    unsigned int cells_per_thread_x = cll->n_x / config->Nx_cuda, remainder_x = cll->n_x % config->Nx_cuda;
+    unsigned int cells_per_thread_y = cll->n_y / config->Ny_cuda, remainder_y = cll->n_y % config->Ny_cuda;
 
-    unsigned x_start = threadIdx.x * cells_per_thread_x + min(threadIdx.x, remainder_x);
-    unsigned int x_end = (threadIdx.x + 1) * cells_per_thread_x + min(threadIdx.x + 1, remainder_x);
-    unsigned int y_start = blockIdx.x * cells_per_thread_y + min(blockIdx.x, remainder_y);
-    unsigned int y_end = (blockIdx.x + 1) * cells_per_thread_y + min(blockIdx.x + 1, remainder_y);
+    unsigned int x_idx = threadIdx.x / config->Ny_cuda;
+    unsigned int y_idx = threadIdx.x % config->Ny_cuda;
+    unsigned int x_start = x_idx * cells_per_thread_x + min(x_idx, remainder_x);
+    unsigned int x_end = (x_idx + 1) * cells_per_thread_x + min(x_idx + 1, remainder_x);
+    unsigned int y_start = y_idx * cells_per_thread_y + min(y_idx, remainder_y);
+    unsigned int y_end = (y_idx + 1) * cells_per_thread_y + min(y_idx + 1, remainder_y);
 
     unsigned int X0, X1, Y0, Y1; // start and end cell coordinates for this step
     switch (stage) {
@@ -111,8 +113,9 @@ __global__ void random_move_kernel(const Config *config, CellLinkedGrid *cll, cu
     }
     cll_remove_point(&p, cll);
     if (!cll_check_overlap(&moved_particle, cll, config)) {
-        double delta_energy = cll_patch_energy(&moved_particle, cll, config) - cll_patch_energy(&p, cll, config);
-        rand_sample = curand_uniform(&states[rand_idx]) * 1;
+        // double delta_energy = cll_patch_energy(&moved_particle, cll, config) - cll_patch_energy(&p, cll, config);
+        double delta_energy = 0;
+        rand_sample = rand_double_cuda(1, &states[rand_idx]);
         if (delta_energy > 0 && rand_sample > exp(-delta_energy)) {
             cll_add_point(&p, cll);
             return;

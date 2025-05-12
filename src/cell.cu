@@ -29,27 +29,13 @@ __host__ int cll_allocate(CellLinkedGrid *cll, const Config *config) {
     }
     cll->n_x = ceil(config->Lx / cll->s_x);
     cll->n_y = ceil(config->Ly / cll->s_x);
-    cll->particles = (Particle*)malloc(config->N * sizeof(Particle));
-    cll->cells = (Particle*)malloc(cll->n_x * cll->n_y * cll->max_particles * sizeof(Particle));
-    cll->head = (int*)malloc(cll->n_x * cll->n_y * sizeof(int));
+    cudaMallocManaged((void**)&cll->particles, config->N * sizeof(Particle));
+    cudaMallocManaged((void**)&cll->cells, cll->n_x * cll->n_y * cll->max_particles * sizeof(Particle));
+    cudaMallocManaged((void**)&cll->head, cll->n_x * cll->n_y * sizeof(int));
     memset(cll->particles, 0, config->N * sizeof(Particle));
     memset(cll->cells, 0, cll->n_x * cll->n_y * cll->max_particles * sizeof(Particle));
     memset(cll->head, 0, cll->n_x * cll->n_y * sizeof(int));
     return cll->cells == NULL || cll->head == NULL || cll->particles == NULL;
-}
-
-__host__ int cll_copy_cuda(CellLinkedGrid *cll, CellLinkedGrid *cll_cuda) {
-    cudaMalloc((void**)&cll_cuda->cells, cll->n_x * cll->n_y * cll->max_particles * sizeof(Particle));
-    cudaMalloc((void**)&cll_cuda->head, cll->n_x * cll->n_y * sizeof(int));
-    cudaMemcpy(cll_cuda->cells, cll->cells, cll->n_x * cll->n_y * cll->max_particles * sizeof(Particle), cudaMemcpyHostToDevice);
-    cudaMemcpy(cll_cuda->head, cll->head, cll->n_x * cll->n_y * sizeof(int), cudaMemcpyHostToDevice);
-    return 0;
-}
-
-__host__ int cll_copy_host(CellLinkedGrid *cll, CellLinkedGrid *cll_cuda) {
-    cudaMemcpy(cll->cells, cll_cuda->cells, cll->n_x * cll->n_y * cll->max_particles * sizeof(Particle), cudaMemcpyDeviceToHost);
-    cudaMemcpy(cll->head, cll_cuda->head, cll->n_x * cll->n_y * sizeof(int), cudaMemcpyDeviceToHost);
-    return 0;
 }
 
 __host__ __device__ int cll_check_overlap(const Particle *p1, CellLinkedGrid *cll, const Config* config) {
@@ -118,17 +104,10 @@ __host__ __device__ int cll_remove_point(Particle *p, CellLinkedGrid *cll) {
     return 1;
 }
 
-__host__ int cll_free_cuda(CellLinkedGrid *cll_cuda) {
-    cudaFree(cll_cuda->cells);
-    cudaFree(cll_cuda->head);
-    cudaFree(cll_cuda->particles);
-    return 0;
-}
-
 __host__ int cll_free(CellLinkedGrid *cll) {
-    free(cll->cells);
-    free(cll->head);
-    free(cll->particles);
+    cudaFree(cll->cells);
+    cudaFree(cll->head);
+    cudaFree(cll->particles);
     return 0;
 }
 

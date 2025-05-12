@@ -37,7 +37,7 @@ __host__ int rand_int(int high) {
 ////////////////////////////////////////////////////////////////////////////////
 
 __global__ void rand_init_kernel(curandState *state) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int idx = threadIdx.x;
     curand_init(1234, idx, 0, &state[idx]);
 }
 
