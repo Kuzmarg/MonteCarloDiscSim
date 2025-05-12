@@ -113,8 +113,7 @@ __global__ void random_move_kernel(const Config *config, CellLinkedGrid *cll, cu
     }
     cll_remove_point(&p, cll);
     if (!cll_check_overlap(&moved_particle, cll, config)) {
-        // double delta_energy = cll_patch_energy(&moved_particle, cll, config) - cll_patch_energy(&p, cll, config);
-        double delta_energy = 0;
+        double delta_energy = cll_patch_energy(&moved_particle, cll, config) - cll_patch_energy(&p, cll, config);
         rand_sample = rand_double_cuda(1, &states[rand_idx]);
         if (delta_energy > 0 && rand_sample > exp(-delta_energy)) {
             cll_add_point(&p, cll);

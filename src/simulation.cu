@@ -32,21 +32,26 @@ int simulate_random(Config *config) {
 }
 
 int simulate_random_cuda(Config *config) {
+    CellLinkedGrid cll, cll_cuda;
+    random_gen(config, &cll);
+    cll_cuda = cll;
+    cll_copy_cuda(&cll, &cll_cuda, config);
+    
     Config *d_config;
     CellLinkedGrid *d_cll;
-    cudaMallocManaged((void**)&d_config, sizeof(Config));
+    cudaMalloc((void**)&d_config, sizeof(Config));
     cudaMemcpy(d_config, config, sizeof(Config), cudaMemcpyHostToDevice);
-    cudaMallocManaged((void**)&d_cll, sizeof(CellLinkedGrid));
-    random_gen(config, d_cll);
+    cudaMalloc((void**)&d_cll, sizeof(CellLinkedGrid));
+    cudaMemcpy(d_cll, &cll_cuda, sizeof(CellLinkedGrid), cudaMemcpyHostToDevice);
 
     // Generate initial configuration
-    config->Nx_cuda = min(config->Nx_cuda, d_cll->n_x / 6);
-    config->Ny_cuda = min(config->Ny_cuda, d_cll->n_y / 6);
+    config->Nx_cuda = min(config->Nx_cuda, cll.n_x / 6);
+    config->Ny_cuda = min(config->Ny_cuda, cll.n_y / 6);
 
     // Save initial configuration
     char filename[256];
     sprintf(filename, "%s/000000.xyz", config->output_folder);
-    int write_code = write_xyz(filename, config, d_cll);
+    int write_code = write_xyz(filename, config, &cll);
     if (write_code) return 1;
     int n_moves = (int)ceil((double)(config->N) / (config->Nx_cuda * config->Ny_cuda * 4));
 
@@ -66,14 +71,17 @@ int simulate_random_cuda(Config *config) {
         }
 
         if (i % config->save_interval == 0) {
+            cudaMemcpy(&cll_cuda, d_cll, sizeof(CellLinkedGrid), cudaMemcpyDeviceToHost);
+            cll_copy_host(&cll, &cll_cuda, config);
             sprintf(filename, "%s/%06d.xyz", config->output_folder, i);
-            write_code = write_xyz(filename, config, d_cll);
+            write_code = write_xyz(filename, config, &cll);
             if (write_code) return 1;
             printf("Iteration %d finished\n", i);
         }
     }
 
-    cll_free(d_cll);
+    cll_free(&cll);
+    cll_free_cuda(&cll_cuda);
     cudaFree(d_config);
     cudaFree(d_cll);
     cudaFree(d_states);
