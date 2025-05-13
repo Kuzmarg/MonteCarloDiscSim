@@ -80,6 +80,33 @@ __host__ __device__ int cll_check_overlap(const Particle *p1, CellLinkedGrid *cl
     return 0;
 }
 
+__global__ void cll_check_overlap_kernel(Particle p1, CellLinkedGrid *cll, const Config* config, int *overlap) {
+    int idx = threadIdx.x;
+    int cell_x = ((int)(p1.x / cll->s_x) + (idx / 3 - 1) + cll->n_x) % cll->n_x;
+    int cell_y = ((int) (p1.y / cll->s_x) + (idx % 3 - 1) + cll->n_y) % cll->n_y;
+    size_t cell_idx = cell_x * cll->n_y + cell_y;
+    for (int k = 0; k < cll->head[cell_idx]; k++) {
+        switch (config->type) {
+        case CIRCLE:
+            if (circle_overlap(&p1, &cll->cells[cell_idx * cll->max_particles + k], config)) {
+                overlap[idx] = 1;
+                __syncthreads();
+                return;
+            }
+            break;
+        case SQUARE:
+            if (square_overlap(&p1, &cll->cells[cell_idx * cll->max_particles + k], config)) {
+                overlap[idx] = 1;
+                __syncthreads();
+                return;
+            }
+            break;
+        }
+    }
+    overlap[idx] = 0;
+    __syncthreads();
+}
+
 __host__ __device__ double cll_patch_energy(const Particle *p1, CellLinkedGrid *cll, const Config* config) {
     double energy = 0;
     int x_idx = (int) (p1->x / cll->s_x);
@@ -95,6 +122,17 @@ __host__ __device__ double cll_patch_energy(const Particle *p1, CellLinkedGrid *
         }
     }
     return energy;
+}
+
+__global__ void cll_patchy_energy_kernel(Particle p1, CellLinkedGrid *cll, const Config* config, double *energy) {
+    int idx = threadIdx.x;
+    int cell_x = ((int)(p1.x / cll->s_x) + (idx / 3 - 1) + cll->n_x) % cll->n_x;
+    int cell_y = ((int) (p1.y / cll->s_x) + (idx % 3 - 1) + cll->n_y) % cll->n_y;
+    size_t cell_idx = cell_x * cll->n_y + cell_y;
+    for (int k = 0; k < cll->head[cell_idx]; k++) {
+        *energy += patch_energy(&p1, &cll->cells[cell_idx * cll->max_particles + k], config);
+    }
+    __syncthreads();
 }
 
 __host__ __device__ int cll_add_point(Particle *p, CellLinkedGrid *cll) {

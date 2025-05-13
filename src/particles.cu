@@ -43,29 +43,21 @@ __host__ __device__ int square_overlap(const Particle *p1, const Particle *p2, c
     quaternion_to_angle(p2->qz, p2->qw, &sin_t2, &cos_t2);
 
     // get vertices of squares
-    double vertices1[8], vertices2[8];
-    get_square_vertices(p1->x, p1->y, config->size, cos_t1, sin_t1, vertices1);
-    get_square_vertices(p2->x, p2->y, config->size, cos_t2, sin_t2, vertices2);
-    
-    // rotate vertices of square 2 by -t1 to square 1's frame of reference and check for overlap
-    for (int i = 0; i < 8; i += 2) {
-        double x_rot, y_rot;
-        // check for boundary conditions
-        Particle pv = {vertices2[i], vertices2[i + 1], 0, 0};
-        if (fabs(pv.x - p1->x) > config->Lx/2) pv.x += (pv.x > p1->x) ? -config->Lx : config->Lx;
-        if (fabs(pv.y - p1->y) > config->Ly/2) pv.y += (pv.y > p1->y) ? -config->Ly : config->Ly;
-        rotate_point(pv.x - p1->x, pv.y - p1->y, cos_t1, -sin_t1, &x_rot, &y_rot);
+    double x_rot, y_rot;
+    Patch patch1, patch2;
+    for (int i = 0; i < 4; i++) {
+        rotate_point((i % 2) ? -config->size/2 : +config->size/2, (i < 2) ? config->size/2 : -config->size/2, cos_t1, sin_t1, &x_rot, &y_rot);
+        patch1 = {p1->x + x_rot, p1->y + y_rot};
+        patch1.x += fabs(patch1.x - p2->x) > config->Lx/2 ? (patch1.x > p2->x) ? -config->Lx : config->Lx : 0;
+        patch1.y += fabs(patch1.y - p2->y) > config->Ly/2 ? (patch1.y > p2->y) ? -config->Ly : config->Ly : 0;
+        rotate_point(patch1.x - p2->x, patch1.y - p2->y, cos_t2, -sin_t2, &x_rot, &y_rot);
         if (fabs(x_rot) < config->size/2 && fabs(y_rot) < config->size/2) return 1;
-    }
 
-    // rotate vertices of square 1 by -t2 to square 2's frame of reference and check for overlap
-    for (int i = 0; i < 8; i += 2) {
-        double x_rot, y_rot;
-        // check for boundary conditions
-        Particle pv = {vertices1[i], vertices1[i + 1], 0, 0};
-        if (fabs(pv.x - p2->x) > config->Lx/2) pv.x += (pv.x > p2->x) ? -config->Lx : config->Lx;
-        if (fabs(pv.y - p2->y) > config->Ly/2) pv.y += (pv.y > p2->y) ? -config->Ly : config->Ly;
-        rotate_point(pv.x - p2->x, pv.y - p2->y, cos_t2, -sin_t2, &x_rot, &y_rot);
+        rotate_point((i % 2) ? -config->size/2 : +config->size/2, (i < 2) ? config->size/2 : -config->size/2, cos_t2, sin_t2, &x_rot, &y_rot);
+        patch2 = {p2->x + x_rot, p2->y + y_rot};
+        patch2.x += fabs(patch2.x - p1->x) > config->Lx/2 ? (patch2.x > p1->x) ? -config->Lx : config->Lx : 0;
+        patch2.y += fabs(patch2.y - p1->y) > config->Ly/2 ? (patch2.y > p1->y) ? -config->Ly : config->Ly : 0;
+        rotate_point(patch2.x - p1->x, patch2.y - p1->y, cos_t1, -sin_t1, &x_rot, &y_rot);
         if (fabs(x_rot) < config->size/2 && fabs(y_rot) < config->size/2) return 1;
     }
     
