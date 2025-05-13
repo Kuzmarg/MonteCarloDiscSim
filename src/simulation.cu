@@ -58,14 +58,20 @@ int simulate_random_cuda(Config *config) {
     // Initialize random number generator
     curandState *d_states;
     cudaMalloc((void**)&d_states, config->Nx_cuda * config->Ny_cuda * sizeof(curandState));
-    rand_init_kernel<<<1, config->Ny_cuda * config->Nx_cuda>>>(d_states);
+    rand_init_kernel<<<config->Ny_cuda, config->Nx_cuda>>>(d_states);
     cudaDeviceSynchronize();
+
+    // Allocate memory for overlaps and energies
+    int *shared_states;
+    Particle *shared_particles;
+    cudaMalloc((void**)&shared_states, config->Nx_cuda * config->Ny_cuda * 9 * sizeof(int));
+    cudaMalloc((void**)&shared_particles, config->Nx_cuda * config->Ny_cuda * 2 * sizeof(Particle));
 
     // Simulation steps
     for (int i = 1; i <= config->num_steps; i++) {
         for (int j = 0; j < n_moves; j++) {
             for (int stage = 0; stage < 4; stage++) {
-                random_move_kernel<<<1, config->Ny_cuda * config->Nx_cuda>>>(d_config, d_cll, d_states, stage);
+                random_move_kernel<<<config->Ny_cuda * config->Nx_cuda, 9>>>(d_config, d_cll, d_states, shared_states, shared_particles, stage);
                 cudaDeviceSynchronize();
             }
         }
@@ -79,6 +85,8 @@ int simulate_random_cuda(Config *config) {
             printf("Iteration %d finished\n", i);
         }
     }
+    cudaFree(shared_states);
+    cudaFree(shared_particles);
 
     cll_free(&cll);
     cll_free_cuda(&cll_cuda);

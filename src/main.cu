@@ -220,19 +220,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    if (config_lookup_string(&cfg, "output_energy_log", &config.output_energy_file)) {
-        size_t name_len = strlen(config.output_energy_file);
-        if (name_len > 256) {
-            fprintf(stderr, "Output energy log file name too long\n");
-            config_destroy(&cfg);
-            return 1;
-        }
-    } else {
-        fprintf(stderr, "No output energy log file specified in config file\n");
-        config_destroy(&cfg);
-        return 1;
-    }
-
     ////////////////////////////////////////////////////////////////////////////////
 
     if (grid_config_init_patches(&config, config.num_patches) != 0) {
