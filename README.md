@@ -2,7 +2,8 @@
 
 # Необхідні інструменти
 - CMake 3.10 або новіша
-- Компілятор C++11 або новіший
+- CUDA 10.0 або новіша
+- libconfig (інструкції з встановлення [тут](https://hyperrealm.github.io/libconfig/))
 
 # Компіляція
 ```bash
@@ -12,5 +13,7 @@
 # Запуск
 
 ```bash
-./build/simulation <C(ircle)/S(quare)> <particle_size> <number_of_particles> <Lx> <Ly> <output_file>
+./build/simulation <config_file>
 ```
+
+Формат конфігураційного файлу можна знайти в [config/base_config.cfg](config/base_config.cfg).
