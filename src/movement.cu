@@ -25,8 +25,7 @@ __host__ void random_move(Particle *p, const Config *config, CellLinkedGrid *cll
 
     cll_remove_point(p, cll);
     if (!cll_check_overlap(&moved_particle, cll, config)) {
-        // double delta_energy = cll_patch_energy(&moved_particle, cll, config) - cll_patch_energy(p, cll, config);
-        double delta_energy = 0.0;
+        double delta_energy = cll_patch_energy(&moved_particle, cll, config) - cll_patch_energy(p, cll, config);
         rand_sample = rand_double(1);
         if (delta_energy > 0 && rand_sample > exp(-delta_energy)) {
             cll_add_point(p, cll);
@@ -38,7 +37,8 @@ __host__ void random_move(Particle *p, const Config *config, CellLinkedGrid *cll
     return;
 }
 
-__global__ void random_move_kernel(const Config *config, CellLinkedGrid *cll, curandState *states, int* shared_states, Particle* shared_particles, int stage) {
+__global__ void random_move_kernel(const Config *config, CellLinkedGrid *cll, curandState *states,
+    int* shared_states, Particle* shared_particles, float* shared_energy, int stage) {
     unsigned int block_id = blockIdx.x;
     unsigned int sub_id = threadIdx.x;
     unsigned int cells_per_thread_x = cll->n_x / config->Nx_cuda, remainder_x = cll->n_x % config->Nx_cuda;
@@ -62,7 +62,6 @@ __global__ void random_move_kernel(const Config *config, CellLinkedGrid *cll, cu
         unsigned int rand_cell = rand_int_cuda((X1 - X0) * (Y1 - Y0), &states[block_id]);
         unsigned int cell_x = X0 + rand_cell / (Y1 - Y0);
         unsigned int cell_y = Y0 + rand_cell % (Y1 - Y0);
-        // printf("block_id: %d, sub_id: %d, cell_x: %d, cell_y: %d\n", block_id, sub_id, cell_x, cell_y);
         unsigned int cell_idx = cell_x * cll->n_y + cell_y;
         unsigned int cell_size = cll->head[cell_idx];
         if (cell_size == 0) {
@@ -101,7 +100,6 @@ __global__ void random_move_kernel(const Config *config, CellLinkedGrid *cll, cu
     int y_idx = (int) (moved_particle.y / cll->s_y);
     int i = sub_id / 3 - 1;
     int j = sub_id % 3 - 1;
-    // printf("block_id: %d, sub_id: %d, i: %d, j: %d\n", block_id, sub_id, i, j);
     size_t idx = (x_idx + i + cll->n_x) % cll->n_x;
     size_t idy = (y_idx + j + cll->n_y) % cll->n_y;
     size_t cell_idx = idx * cll->n_y + idy;
@@ -129,9 +127,34 @@ __global__ void random_move_kernel(const Config *config, CellLinkedGrid *cll, cu
             cll_add_point(&p, cll);
             return;
         }
-    
-        // double delta_energy = cll_patch_energy(&moved_particle, cll, config) - cll_patch_energy(&p, cll, config);
-        double delta_energy = 0.0;
+    }
+    __syncthreads();
+    shared_energy[block_id * 9 + sub_id] = 0;
+    x_idx = (int) (p.x / cll->s_x);
+    y_idx = (int) (p.y / cll->s_x);
+    i = sub_id / 3 - 1;
+    j = sub_id % 3 - 1;
+    idx = (x_idx + i + cll->n_x) % cll->n_x;
+    idy = (y_idx + j + cll->n_y) % cll->n_y;
+    cell_idx = idx * cll->n_y + idy;
+    for (int k = 0; k < cll->head[cell_idx]; k++) {
+        shared_energy[block_id * 9 + sub_id] -= patch_energy(&p, &cll->cells[cell_idx * cll->max_particles + k], config);
+    }
+
+    x_idx = (int) (moved_particle.x / cll->s_x);
+    y_idx = (int) (moved_particle.y / cll->s_x);
+    idx = (x_idx + i + cll->n_x) % cll->n_x;
+    idy = (y_idx + j + cll->n_y) % cll->n_y;
+    cell_idx = idx * cll->n_y + idy;
+    for (int k = 0; k < cll->head[cell_idx]; k++) {
+        shared_energy[block_id * 9 + sub_id] += patch_energy(&moved_particle, &cll->cells[cell_idx * cll->max_particles + k], config);
+    }
+    __syncthreads();
+    if (sub_id == 0) {
+        double delta_energy = 0;
+        for (int k = 0; k < 9; k++) {
+            delta_energy += shared_energy[block_id * 9 + k];
+        }
         double rand_sample = rand_double_cuda(1, &states[block_id]);
         if (delta_energy > 0 && rand_sample > exp(-delta_energy)) {
             cll_add_point(&p, cll);
